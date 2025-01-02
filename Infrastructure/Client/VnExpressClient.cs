@@ -55,78 +55,105 @@ public class VnExpressClient : IVnExpressClient
         long toDateUnix,
         int pageNumber)
     {
-        var url =
-            $"{_baseUrl}/category/day/cateid/{categoryId}/fromdate/{fromDateUnix}/todate/{toDateUnix}/allcate/0/page/{pageNumber}";
+        try
+        {
+            var url =
+                $"{_baseUrl}/category/day/cateid/{categoryId}/fromdate/{fromDateUnix}/todate/{toDateUnix}/allcate/0/page/{pageNumber}";
 
-        var response = await _pageRequester.MakeRequestAsync(new Uri(url));
-        if (!response.HttpResponseMessage.IsSuccessStatusCode)
+            var response = await _pageRequester.MakeRequestAsync(new Uri(url));
+            if (!response.HttpResponseMessage.IsSuccessStatusCode)
+            {
+                Log.Warning(
+                    $"Failed to get articles for category {categoryId}, page {pageNumber}. Status code: {response.HttpResponseMessage.StatusCode}");
+                return (null, false);
+            }
+
+            var document = await _context.OpenAsync(req => req.Content(response.Content.Text));
+            var articles = document.QuerySelectorAll("article.item-news.item-news-common");
+
+            return (articles, articles.Length > 0);
+        }
+        catch (Exception e)
         {
             Log.Warning(
-                $"Failed to get articles for category {categoryId}, page {pageNumber}. Status code: {response.HttpResponseMessage.StatusCode}");
+                $"Failed to get articles for category {categoryId}, page {pageNumber}: {e.Message}");
             return (null, false);
         }
-
-        var document = await _context.OpenAsync(req => req.Content(response.Content.Text));
-        var articles = document.QuerySelectorAll("article.item-news.item-news-common");
-
-        return (articles, articles.Length > 0);
     }
 
     public async Task<(string ObjectId, string ObjectType, DateTime PublishedDate)?> GetArticleAsync(string url,
         string title)
     {
-        var response = await _pageRequester.MakeRequestAsync(new Uri(url));
-        if (!response.HttpResponseMessage.IsSuccessStatusCode)
+        try
         {
-            Log.Warning("Failed to get article {Title} at {Url}. Status code: {StatusCode}", title, url,
-                response.HttpResponseMessage.StatusCode);
+            var response = await _pageRequester.MakeRequestAsync(new Uri(url));
+            if (!response.HttpResponseMessage.IsSuccessStatusCode)
+            {
+                Log.Warning("Failed to get article {Title} at {Url}. Status code: {StatusCode}", title, url,
+                    response.HttpResponseMessage.StatusCode);
+            }
+
+            var document = await _context.OpenAsync(req => req.Content(response.Content.Text));
+
+            var commentSection = document.QuerySelector("span.number_cmt.txt_num_comment.num_cmt_detail");
+            var publishedDateData = document.QuerySelector("meta[name='pubdate']");
+
+            if (commentSection == null)
+            {
+                Log.Warning("No comment section found for {Url}", url);
+                return null;
+            }
+
+            var objectId = commentSection.GetAttribute("data-objectid");
+            var objectType = commentSection.GetAttribute("data-objecttype");
+
+            if (string.IsNullOrEmpty(objectId) || string.IsNullOrEmpty(objectType) ||
+                !DateTime.TryParseExact(publishedDateData?.GetAttribute("content")?.Trim(), "yyyy-MM-ddTHH:mm:sszzz",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime publishedDate))
+            {
+                return null;
+            }
+
+            return (objectId, objectType, publishedDate);      
         }
-
-        var document = await _context.OpenAsync(req => req.Content(response.Content.Text));
-
-        var commentSection = document.QuerySelector("span.number_cmt.txt_num_comment.num_cmt_detail");
-        var publishedDateData = document.QuerySelector("meta[name='pubdate']");
-
-        if (commentSection == null)
+        catch (Exception e)
         {
-            Log.Warning("No comment section found for {Url}", url);
+            Log.Warning("Failed to get article {Title} at {Url}: {Message}", title, url, e.Message);
             return null;
         }
-
-        var objectId = commentSection.GetAttribute("data-objectid");
-        var objectType = commentSection.GetAttribute("data-objecttype");
-
-        if (string.IsNullOrEmpty(objectId) || string.IsNullOrEmpty(objectType) ||
-            !DateTime.TryParseExact(publishedDateData?.GetAttribute("content")?.Trim(), "yyyy-MM-ddTHH:mm:sszzz",
-                CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime publishedDate))
-        {
-            return null;
-        }
-
-        return (objectId, objectType, publishedDate);
+      
     }
 
     public async Task<int> GetCommentsAsync(string objectId, string objectType, int offset = 0, int limit = 1000)
     {
-        var apiUrl =
-            $"{_commentApiUrl}?offset={offset}&limit={limit}&sort_by=like&objectid={objectId}&objecttype={objectType}&siteid=1000000";
-
-        var response = await _pageRequester.MakeRequestAsync(new Uri(apiUrl));
-        if (!response.HttpResponseMessage.IsSuccessStatusCode)
+        try
         {
-            Log.Warning(
-                $"Failed to get comments for url {_commentApiUrl}. Status code: {response.HttpResponseMessage.StatusCode}");
+            var apiUrl =
+                $"{_commentApiUrl}?offset={offset}&limit={limit}&sort_by=like&objectid={objectId}&objecttype={objectType}&siteid=1000000";
+
+            var response = await _pageRequester.MakeRequestAsync(new Uri(apiUrl));
+            if (!response.HttpResponseMessage.IsSuccessStatusCode)
+            {
+                Log.Warning(
+                    $"Failed to get comments for url {_commentApiUrl}. Status code: {response.HttpResponseMessage.StatusCode}");
+                return 0;
+            }
+
+
+            var commentData = JsonConvert.DeserializeObject<CommentResponse>(response.Content.Text);
+            if (commentData?.Data?.Items == null || commentData.Data.Items.Count == 0)
+            {
+                return 0;
+            }
+
+            return commentData.Data.Items.Sum(comment => comment.UserLike);      
+        }
+        catch (Exception e)
+        {
+            Log.Warning("Failed to get comments for url {_commentApiUrl}: {Message}", e.Message);
             return 0;
         }
-
-
-        var commentData = JsonConvert.DeserializeObject<CommentResponse>(response.Content.Text);
-        if (commentData?.Data?.Items == null || commentData.Data.Items.Count == 0)
-        {
-            return 0;
-        }
-
-        return commentData.Data.Items.Sum(comment => comment.UserLike);
+      
     }
 
     private class CommentResponse

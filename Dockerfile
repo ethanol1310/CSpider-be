@@ -18,5 +18,5 @@ RUN chown -R nonroot:nonroot /app && \
 
 USER nonroot
 
-EXPOSE 80
+EXPOSE 8080
 ENTRYPOINT ["dotnet", "CSpider.dll"]

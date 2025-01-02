@@ -5,7 +5,7 @@ using Serilog;
 using CSpider.Utils;
 using Microsoft.Extensions.Options;
 
-namespace CSpider.Core.Services;
+namespace CSpider.Api.Controllers;
 
 public class CrawlerCronJob : IHostedService, IDisposable
 {

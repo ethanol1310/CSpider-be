@@ -1,23 +1,28 @@
 using Abot2.Core;
+using CSpider.Api.Controllers;
 using CSpider.Services;
 using CSpider.Core.Crawler;
 using CSpider.Core.Spider;
 using CSpider.Interface;
 using CSpider.Config;
 using CSpider.Core.Interface;
-using CSpider.Core.Services;
 using CSpider.Infrastructure.Client;
 using CSpider.Infrastructure.Store;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Serilog;
+using Serilog.Sinks.GoogleCloudLogging;
+
 var builder = WebApplication.CreateBuilder(args);
 
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Debug()
-    .WriteTo.Console()
-    .CreateLogger();
+        .MinimumLevel.Debug()
+        .Enrich.FromLogContext()
+        .WriteTo.Console()
+        .WriteTo.GoogleCloudLogging(
+            projectId: "calif-interview"
+            ).CreateLogger();
 
 // Configure settings
 builder.Services.Configure<Config>(
@@ -49,23 +54,19 @@ builder.Services.AddSingleton<IArticleCrawler, VnExpressArticleCrawler>();
 
 // Register services
 builder.Services.AddSingleton<IArticleService, ArticleService>();
-builder.Services.AddHostedService<CrawlerCronJob>();
 
+builder.Services.AddHostedService<CrawlerCronJob>();
 builder.Services.AddControllers();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowReactApp",
+    options.AddPolicy("AllowCORS",
         builder =>
         {
             builder
-                .WithOrigins(
-                    "http://localhost:5173", 
-                    "http://localhost",       
-                    "http://localhost:80")   
+                .AllowAnyOrigin()   
                 .AllowAnyMethod()
                 .AllowAnyHeader();
-
         });
 });
 
@@ -74,7 +75,7 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 app.UseAuthorization();
 
-app.UseCors("AllowReactApp");
+app.UseCors("AllowCORS");
 
 app.MapControllers();
 

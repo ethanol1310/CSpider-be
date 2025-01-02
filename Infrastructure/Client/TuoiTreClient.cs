@@ -52,81 +52,110 @@ public class TuoiTreClient : ITuoiTreClient
         string dateStr,
         int pageNumber)
     {
-        var url = $"{_baseUrl}/timeline-xem-theo-ngay/0/{dateStr}/trang-{pageNumber}.htm";
+        try
+        {
+            var url = $"{_baseUrl}/timeline-xem-theo-ngay/0/{dateStr}/trang-{pageNumber}.htm";
 
-        var response = await _pageRequester.MakeRequestAsync(new Uri(url));
-        if (!response.HttpResponseMessage.IsSuccessStatusCode)
+            var response = await _pageRequester.MakeRequestAsync(new Uri(url));
+            if (!response.HttpResponseMessage.IsSuccessStatusCode)
+            {
+                Log.Warning(
+                    $"Failed to get articles for date {dateStr}, page {pageNumber}. Status code: {response.HttpResponseMessage.StatusCode}");
+                return (null, false);
+            }
+
+            var document = await _context.OpenAsync(req => req.Content(response.Content.Text));
+            var articles = document.QuerySelectorAll("li.news-item");
+
+            return (articles, articles.Length > 0);
+        }
+        catch (Exception e)
         {
             Log.Warning(
-                $"Failed to get articles for date {dateStr}, page {pageNumber}. Status code: {response.HttpResponseMessage.StatusCode}");
+                $"Failed to get articles for date {dateStr}, page {pageNumber}: {e.Message}");
             return (null, false);
         }
-
-        var document = await _context.OpenAsync(req => req.Content(response.Content.Text));
-        var articles = document.QuerySelectorAll("li.news-item");
-
-        return (articles, articles.Length > 0);
+       
     }
 
     public async Task<(string ObjectId, string ObjectType, DateTime PublishedTime)?> GetArticleAsync(string url,
         string title)
     {
-        var response = await _pageRequester.MakeRequestAsync(new Uri(url));
-        if (!response.HttpResponseMessage.IsSuccessStatusCode)
+        try
+        {
+            var response = await _pageRequester.MakeRequestAsync(new Uri(url));
+            if (!response.HttpResponseMessage.IsSuccessStatusCode)
+            {
+                Log.Warning(
+                    $"Failed to get article for url {url}. Status code: {response.HttpResponseMessage.StatusCode}");
+                return null;
+            }
+
+            var document = await _context.OpenAsync(req => req.Content(response.Content.Text));
+            var commentSection = document.QuerySelector("section.comment-wrapper");
+            var publishedDateData = document.QuerySelector("div[data-role='publishdate']");
+
+            if (commentSection == null)
+            {
+                Log.Warning("No comment section found for {Url}", url);
+                return null;
+            }
+
+            var objectId = commentSection.GetAttribute("data-objectid");
+            var objectType = commentSection.GetAttribute("data-objecttype");
+            if (string.IsNullOrEmpty(objectId) || string.IsNullOrEmpty(objectType) ||
+                !DateTime.TryParseExact(publishedDateData?.TextContent.Trim(), "dd/MM/yyyy HH:mm 'GMT'z",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime publishedDate))
+            {
+                return null;
+            }
+
+            return (objectId, objectType, publishedDate);
+        }
+        catch (Exception e)
         {
             Log.Warning(
-                $"Failed to get article for url {url}. Status code: {response.HttpResponseMessage.StatusCode}");
+                $"Failed to get article for url {url}: {e.Message}");
             return null;
         }
-
-        var document = await _context.OpenAsync(req => req.Content(response.Content.Text));
-        var commentSection = document.QuerySelector("section.comment-wrapper");
-        var publishedDateData = document.QuerySelector("div[data-role='publishdate']");
-
-        if (commentSection == null)
-        {
-            Log.Warning("No comment section found for {Url}", url);
-            return null;
-        }
-
-        var objectId = commentSection.GetAttribute("data-objectid");
-        var objectType = commentSection.GetAttribute("data-objecttype");
-        if (string.IsNullOrEmpty(objectId) || string.IsNullOrEmpty(objectType) ||
-            !DateTime.TryParseExact(publishedDateData?.TextContent.Trim(), "dd/MM/yyyy HH:mm 'GMT'z",
-                CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime publishedDate))
-        {
-            return null;
-        }
-
-        return (objectId, objectType, publishedDate);
     }
 
     public async Task<int> GetCommentsAsync(string objectId, string objectType, string url, int page = 1)
     {
-        var apiUrl = $"{_commentApiUrl}?pageindex={page}&objId={objectId}&objType={objectType}&sort=2";
+        try
+        {
 
-        var response = await _pageRequester.MakeRequestAsync(new Uri(apiUrl));
-        if (!response.HttpResponseMessage.IsSuccessStatusCode)
+            var apiUrl = $"{_commentApiUrl}?pageindex={page}&objId={objectId}&objType={objectType}&sort=2";
+
+            var response = await _pageRequester.MakeRequestAsync(new Uri(apiUrl));
+            if (!response.HttpResponseMessage.IsSuccessStatusCode)
+            {
+                Log.Warning(
+                    $"Failed to get comments for url {url}, page {page}. Status code: {response.HttpResponseMessage.StatusCode}");
+                return 0;
+            }
+
+            var commentData = JsonConvert.DeserializeObject<CommentResponse>(response.Content.Text);
+            if (commentData?.Data == null)
+            {
+                Log.Warning("No comment data found for {Url}", url);
+                return 0;
+            }
+
+            var comments = JsonConvert.DeserializeObject<List<Comment>>(commentData.Data);
+            if (comments == null || comments.Count == 0)
+            {
+                return 0;
+            }
+
+            return comments.Sum(c => c.Reactions?.Values.Sum() ?? 0);
+        }
+        catch (Exception e)
         {
             Log.Warning(
-                $"Failed to get comments for url {url}, page {page}. Status code: {response.HttpResponseMessage.StatusCode}");
+                $"Failed to get comment for url {url}: {e.Message}");
             return 0;
         }
-
-        var commentData = JsonConvert.DeserializeObject<CommentResponse>(response.Content.Text);
-        if (commentData?.Data == null)
-        {
-            Log.Warning("No comment data found for {Url}", url);
-            return 0;
-        }
-
-        var comments = JsonConvert.DeserializeObject<List<Comment>>(commentData.Data);
-        if (comments == null || comments.Count == 0)
-        {
-            return 0;
-        }
-
-        return comments.Sum(c => c.Reactions?.Values.Sum() ?? 0);
     }
 
     private class CommentResponse

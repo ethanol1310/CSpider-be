@@ -1,8 +1,9 @@
-@CSpider_HostAddress = http://localhost:80
+@CSpider_HostAddress = https://cspider-600164119455.asia-southeast1.run.app
 
 ### 
-GET {{CSpider_HostAddress}}/articles?from_date=2024-12-30&to_date=2025-01-02&source=1&limit=20
+GET {{CSpider_HostAddress}}/articles?from_date=2024-12-30&to_date=2025-01-02&source=tuoitre&limit=20
 Accept: application/json
 
 ### 
-
+GET {{CSpider_HostAddress}}/health
+Accept: application/json
