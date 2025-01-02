@@ -9,7 +9,7 @@ public class ArticleStore
     private readonly LiteDatabase _database;
     private readonly ILiteCollection<Article> _articles;
 
-    public ArticleStore(string fileName = "articles.db")
+    public ArticleStore(string fileName = "data/articles.db")
     {
         _database = new LiteDatabase($"Filename={fileName};Connection=shared");
         _articles = _database.GetCollection<Article>("articles");

@@ -1,3 +1,4 @@
+using System;
 using CSpider.Interface;
 
 namespace CSpider.Core.Spider;

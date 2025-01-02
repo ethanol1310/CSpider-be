@@ -1,3 +1,4 @@
+using System;
 using CSpider.Core.Interface;
 using CSpider.Core.Spider;
 using CSpider.Infrastructure.Store;

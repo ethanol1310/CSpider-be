@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using CSpider.Models;
 
 namespace CSpider.Core.Interface;

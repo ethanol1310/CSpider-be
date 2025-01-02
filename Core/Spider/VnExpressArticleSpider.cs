@@ -1,5 +1,3 @@
-using CSpider.Interface;
-
 namespace CSpider.Core.Spider;
 using Models;
 using Serilog;
