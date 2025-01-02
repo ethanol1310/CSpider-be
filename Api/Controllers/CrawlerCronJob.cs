@@ -40,10 +40,17 @@ public class CrawlerCronJob : IHostedService, IDisposable
             fromDate = Helper.NormalizeDateTime(fromDate, true);
             toDate = Helper.NormalizeDateTime(toDate, false);
 
-            foreach (var crawler in _crawlers)
+            Parallel.ForEach(_crawlers,new ParallelOptions { MaxDegreeOfParallelism = 4 }, crawler =>
             {
-                crawler.CrawlArticle(fromDate, toDate);
-            }
+                try
+                {
+                    crawler.CrawlArticle(fromDate, toDate);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Error in crawler {CrawlerType}", crawler.GetType().Name);
+                }
+            });
         }
         catch (Exception ex)
         {

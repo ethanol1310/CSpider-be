@@ -23,28 +23,39 @@ public class VnExpressArticleCrawler : IArticleCrawler
 
     public void CrawlArticle(DateTime fromDate, DateTime toDate)
     {
-        Log.Information("Crawling VnExpress articles from {fromDate} to {toDate}", fromDate, toDate);
+        Log.Information("Start Crawling VnExpress articles from {fromDate} to {toDate}", fromDate, toDate);
 
         try
         {
-            _spider.CrawlAsync(fromDate, toDate).Wait();
-            var now = DateTime.Now;
-            var articles = _spider.ListArticle.Articles.Select(article =>
+            var currentDate = toDate;
+            while (currentDate > fromDate)
             {
-                article.Source = Source.VnExpress;
-                article.CreatedTime = now;
-                return article;
-            }).ToList();
+                var chunkStartDate = currentDate.AddHours(-4) < fromDate ? fromDate : currentDate.AddHours(-4);
+                Log.Information("Crawling VnExpress articles from {chunkStartDate} to {currentDate}", chunkStartDate, currentDate);
+        
+                _spider.CrawlAsync(chunkStartDate, currentDate).Wait();
+                var now = DateTime.Now;
+                var articles = _spider.ListArticle.Articles.Select(article =>
+                {
+                    article.Source = Source.TuoiTre;
+                    article.CreatedTime = now;
+                    return article;
+                });
 
-            _articleStore.UpsertBatch(articles);
+                _articleStore.UpsertBatch(articles);
 
-            Log.Information(
-                "Finished crawling VnExpress articles from {fromDate} to {toDate}. Stored {count} articles in batch.",
-                fromDate, toDate, articles.Count);
+                Log.Information(
+                    "Finished chunk: {chunkStartDate} to {currentDate}. Stored {count} articles.",
+                    chunkStartDate, currentDate, _spider.ListArticle.Articles.Count);
+
+                currentDate = chunkStartDate;
+            }
+
+            Log.Information("Completed full crawl from {fromDate} to {toDate}", fromDate, toDate);
         }
         catch (Exception e)
         {
-            Log.Error($"Error crawling VnExpress articles from {fromDate} to {toDate}: {e.Message}");
+            Log.Error($"Error crawling TuoiTre articles from {fromDate} to {toDate}: {e.Message}");
         }
     }
 }

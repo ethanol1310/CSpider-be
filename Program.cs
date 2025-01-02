@@ -17,7 +17,7 @@ using Serilog.Sinks.GoogleCloudLogging;
 var builder = WebApplication.CreateBuilder(args);
 
 Log.Logger = new LoggerConfiguration()
-        .MinimumLevel.Debug()
+        .MinimumLevel.Information()
         .Enrich.FromLogContext()
         .WriteTo.Console()
         .CreateLogger();
