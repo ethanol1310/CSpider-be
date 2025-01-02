@@ -24,7 +24,7 @@ public static class ArticleSeed
             CreatedTime = createdTime ?? DateTime.Now
         };
     }
-    
+
     public static Article CreateArticleWithSameUrl(Article original, string? newTitle = null, int? newTotalCommentLikes = null)
     {
         return CreateTestArticle(
@@ -36,7 +36,7 @@ public static class ArticleSeed
             createdTime: DateTime.Now
         );
     }
-    
+
     public static IEnumerable<Article> CreateArticlesInDateRange(DateTime startDate, DateTime endDate, int count = 5)
     {
         var timeSpan = endDate - startDate;
@@ -46,7 +46,7 @@ public static class ArticleSeed
         {
             var randomDays = Random.Shared.NextDouble() * timeSpan.TotalDays;
             var publishTime = startDate.AddDays(randomDays);
-            
+
             articles.Add(CreateTestArticle(publishTime: publishTime));
         }
 

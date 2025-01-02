@@ -47,10 +47,10 @@ public class TuoiTreArticleCrawlerTests : IClassFixture<ArticleStoreFixture>
         {
             var result = _articleStore.FindByUrl(article.Url);
             Assert.Single(result);
-            Assert.Equal<string>(article.Title, result[0].Title);
+            Assert.Equal(article.Title, result[0].Title);
         }
     }
-    
+
     [Fact]
     public void CrawlArticle_NoArticles()
     {

@@ -25,14 +25,16 @@ builder.Services.Configure<Config>(
 builder.Services.AddSingleton<ArticleStore>();
 
 // Register clients
-builder.Services.AddSingleton<ITuoiTreClient>(sp => {
+builder.Services.AddSingleton<ITuoiTreClient>(sp =>
+{
     var config = sp.GetRequiredService<IOptions<Config>>().Value.TuoiTreConfig;
-    return new TuoiTreClient(config.BaseUrl, config.CommentApiUrl, new WebContentExtractor());
+    return new TuoiTreClient(new WebContentExtractor(), config);
 });
 
-builder.Services.AddSingleton<IVnExpressClient>(sp => {
+builder.Services.AddSingleton<IVnExpressClient>(sp =>
+{
     var config = sp.GetRequiredService<IOptions<Config>>().Value.VnExpressConfig;
-    return new VnExpressClient(config.BaseUrl, config.CommentApiUrl, new WebContentExtractor());
+    return new VnExpressClient(new WebContentExtractor(), config);
 });
 
 // Register spiders
@@ -49,11 +51,28 @@ builder.Services.AddHostedService<CrawlerCronJob>();
 
 builder.Services.AddControllers();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp",
+        builder =>
+        {
+            builder
+                .WithOrigins(
+                    "http://localhost:5173")
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+
+        });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 app.UseAuthorization();
 
+app.UseCors("AllowReactApp");
+
 app.MapControllers();
+
 
 app.Run();

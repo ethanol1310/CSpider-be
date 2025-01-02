@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Abot2.Core;
 using Abot2.Poco;
+using CSpider.Config;
 using CSpider.Infrastructure.Client;
 using Moq;
 using Serilog;
@@ -20,7 +21,16 @@ public class VnExpressClientTests
     public VnExpressClientTests()
     {
         _mockContentExtractor = new Mock<IWebContentExtractor>();
-        _client = new VnExpressClient(BaseUrl, CommentApiUrl, _mockContentExtractor.Object);
+        _client = new VnExpressClient(_mockContentExtractor.Object, new VnExpressConfig
+        {
+            BaseUrl = BaseUrl,
+            CommentApiUrl = CommentApiUrl,
+            HttpClientConfig = new HttpClientConfig
+            {
+                MaxRetry = 3,
+                MinRetryDelayInMilliseconds = 100
+            }
+        });
     }
 
     [Fact]

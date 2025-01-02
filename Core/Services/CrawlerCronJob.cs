@@ -22,7 +22,7 @@ public class CrawlerCronJob : IHostedService, IDisposable
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _timer = new Timer(DoWork, null, 
+        _timer = new Timer(DoWork, null,
             TimeSpan.FromSeconds(_config.InitialDelaySeconds),
             TimeSpan.FromMinutes(_config.IntervalMinutes));
         return Task.CompletedTask;
@@ -36,7 +36,7 @@ public class CrawlerCronJob : IHostedService, IDisposable
             Log.Information("CronJob: crawling articles");
             var toDate = DateTime.Now;
             var fromDate = toDate.AddDays((-1) * _config.CrawlDayRange);
-        
+
             fromDate = Helper.NormalizeDateTime(fromDate, true);
             toDate = Helper.NormalizeDateTime(toDate, false);
 

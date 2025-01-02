@@ -26,12 +26,12 @@ public class ArticlesController : ControllerBase
     {
         var start = request.FromDate ?? DateTime.Now.AddDays(-7);
         var end = request.ToDate ?? DateTime.Now;
-        int top = request.NTop ?? 10;
+        int top = request.Limit ?? 10;
 
         start = Helper.NormalizeDateTime(start, true);
         end = Helper.NormalizeDateTime(end, false);
 
-        var articles = _articleService.GetArticles(start, end)
+        var articles = _articleService.GetArticles(start, end, request.Source)
             .OrderByDescending(a => a.TotalCommentLikes)
             .Take(top)
             .Select(a => new ArticleDto
@@ -40,9 +40,10 @@ public class ArticlesController : ControllerBase
                 Url = a.Url,
                 TotalCommentLikes = a.TotalCommentLikes,
                 PublishTime = a.PublishTime,
+                Source = a.Source.ToString()
             })
             .ToList();
-        
+
         return Ok(new GetArticlesResponse
         {
             Articles = articles,

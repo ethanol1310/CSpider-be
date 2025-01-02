@@ -1,3 +1,5 @@
+using CSpider.Config;
+
 namespace CSpider.Infrastructure.Client;
 
 using AngleSharp;
@@ -33,12 +35,17 @@ public class VnExpressClient : IVnExpressClient
     private readonly IBrowsingContext _context;
     private PageRequesterCustom _pageRequester;
 
-    public VnExpressClient(string baseUrl, string commentApiUrl, IWebContentExtractor contentExtractor)
+    public VnExpressClient(IWebContentExtractor contentExtractor, VnExpressConfig config)
     {
-        _baseUrl = baseUrl;
-        _commentApiUrl = commentApiUrl;
+        _baseUrl = config.BaseUrl;
+        _commentApiUrl = config.CommentApiUrl;
         _context = BrowsingContext.New(Configuration.Default.WithDefaultLoader());
-        _pageRequester = new PageRequesterCustom(new CrawlConfiguration(), contentExtractor);
+        _pageRequester = new PageRequesterCustom(new CrawlConfiguration
+        {
+            MaxRetryCount = config.HttpClientConfig.MaxRetry,
+            MinRetryDelayInMilliseconds = config.HttpClientConfig.MinRetryDelayInMilliseconds,
+            HttpRequestTimeoutInSeconds = config.HttpClientConfig.HttpRequestTimeoutInSeconds,
+        }, contentExtractor);
     }
 
 
@@ -50,8 +57,8 @@ public class VnExpressClient : IVnExpressClient
     {
         var url =
             $"{_baseUrl}/category/day/cateid/{categoryId}/fromdate/{fromDateUnix}/todate/{toDateUnix}/allcate/0/page/{pageNumber}";
-        var response = await _pageRequester.MakeRequestAsync(new Uri(url));
 
+        var response = await _pageRequester.MakeRequestAsync(new Uri(url));
         if (!response.HttpResponseMessage.IsSuccessStatusCode)
         {
             Log.Warning(
@@ -74,7 +81,7 @@ public class VnExpressClient : IVnExpressClient
             Log.Warning("Failed to get article {Title} at {Url}. Status code: {StatusCode}", title, url,
                 response.HttpResponseMessage.StatusCode);
         }
-        
+
         var document = await _context.OpenAsync(req => req.Content(response.Content.Text));
 
         var commentSection = document.QuerySelector("span.number_cmt.txt_num_comment.num_cmt_detail");
@@ -105,12 +112,13 @@ public class VnExpressClient : IVnExpressClient
             $"{_commentApiUrl}?offset={offset}&limit={limit}&sort_by=like&objectid={objectId}&objecttype={objectType}&siteid=1000000";
 
         var response = await _pageRequester.MakeRequestAsync(new Uri(apiUrl));
-
-        if (string.IsNullOrEmpty(response.Content.Text))
+        if (!response.HttpResponseMessage.IsSuccessStatusCode)
         {
-            Log.Error("Empty response from VnExpress API for objectId {ObjectId}", objectId);
+            Log.Warning(
+                $"Failed to get comments for url {_commentApiUrl}. Status code: {response.HttpResponseMessage.StatusCode}");
             return 0;
         }
+
 
         var commentData = JsonConvert.DeserializeObject<CommentResponse>(response.Content.Text);
         if (commentData?.Data?.Items == null || commentData.Data.Items.Count == 0)

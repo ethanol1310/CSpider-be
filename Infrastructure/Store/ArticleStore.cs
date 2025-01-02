@@ -14,6 +14,8 @@ public class ArticleStore
         _database = new LiteDatabase($"Filename={fileName};Connection=shared");
         _articles = _database.GetCollection<Article>("articles");
         _articles.EnsureIndex(x => new { x.Url, x.Source }, true);
+        _articles.EnsureIndex(x => x.Source);
+        _articles.EnsureIndex(x => x.PublishTime);
     }
 
     public void Upsert(Article article)
@@ -41,11 +43,20 @@ public class ArticleStore
         }
     }
 
+    public List<Article> FindByPublishTimeRangeAndSource(DateTime fromDate, DateTime toDate, Source source)
+    {
+        return _articles.Find(a =>
+            a.PublishTime >= fromDate &&
+            a.PublishTime <= toDate &&
+            a.Source == source
+        ).ToList();
+    }
+
     public List<Article> FindByPublishTimeRange(DateTime fromDate, DateTime toDate)
     {
         return _articles.Find(a => a.PublishTime >= fromDate && a.PublishTime <= toDate).ToList();
     }
-    
+
     public List<Article> FindByUrl(string url)
     {
         return _articles.Find(a => a.Url == url).ToList();

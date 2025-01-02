@@ -83,7 +83,7 @@ public class ArticleStoreTests : IClassFixture<ArticleStoreFixture>
 
         // Assert
         Assert.Equal(5, result.Count);
-        Assert.All(result, article => 
+        Assert.All(result, article =>
         {
             Assert.True(article.PublishTime >= fromDate);
             Assert.True(article.PublishTime <= toDate);

@@ -1,7 +1,7 @@
 @CSpider_HostAddress = http://localhost:5047
 
 ### 
-GET {{CSpider_HostAddress}}/articles?from_date=2024-12-30&to_date=2025-01-02
+GET {{CSpider_HostAddress}}/articles?from_date=2024-12-30&to_date=2025-01-02&source=tuoitre&limit=20
 Accept: application/json
 
 ### 

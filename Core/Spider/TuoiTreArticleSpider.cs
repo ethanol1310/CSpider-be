@@ -15,18 +15,20 @@ using Bogus;
 using Infrastructure.Client;
 using Interface;
 using AngleSharp.Dom;
-using Config; 
+using Config;
 using Microsoft.Extensions.Options;
 
 public class TuoiTreArticleSpider : ITuoiTreSpider
 {
     private readonly string _baseUrl;
-    private readonly SemaphoreSlim _semaphore;
+    private readonly SemaphoreSlim _semaphoreConcurrentPages;
     private readonly int _maxConcurrentArticles;
+    private readonly int _minDelayBetweenPagesInMilliseconds;
+    private readonly int _minDelayBetweenArticlesInMilliseconds;
     private readonly ITuoiTreClient _tuoiTreClient;
 
     public ListArticle ListArticle { get; }
-    
+
     public TuoiTreArticleSpider(
         ITuoiTreClient tuoiTreClient,
         IOptions<Config> config)
@@ -34,17 +36,19 @@ public class TuoiTreArticleSpider : ITuoiTreSpider
         var cfg = config.Value.TuoiTreConfig;
         _baseUrl = cfg.BaseUrl;
         _tuoiTreClient = tuoiTreClient;
-        _semaphore = new SemaphoreSlim(cfg.MaxConcurrentPages);
+        _semaphoreConcurrentPages = new SemaphoreSlim(cfg.MaxConcurrentPages);
         _maxConcurrentArticles = cfg.MaxConcurrentArticles;
+        _minDelayBetweenPagesInMilliseconds = cfg.MinDelayBetweenPagesInMilliseconds;
+        _minDelayBetweenArticlesInMilliseconds = cfg.MinDelayBetweenArticlesInMilliseconds;
         ListArticle = new ListArticle();
     }
-    
+
 
     public async Task CrawlAsync(DateTime fromDate, DateTime toDate)
     {
         var stopwatch = Stopwatch.StartNew();
         var currentDate = fromDate;
-        
+
         while (currentDate <= toDate)
         {
             try
@@ -59,7 +63,7 @@ public class TuoiTreArticleSpider : ITuoiTreSpider
 
             currentDate = currentDate.AddDays(1);
         }
-        
+
         stopwatch.Stop();
         Log.Information(
             "TuoiTre crawling completed: Processed {ArticleCount} articles in {ElapsedTime:hh\\:mm\\:ss}",
@@ -74,7 +78,7 @@ public class TuoiTreArticleSpider : ITuoiTreSpider
 
         while (true)
         {
-            await _semaphore.WaitAsync();
+            await _semaphoreConcurrentPages.WaitAsync();
             try
             {
                 var (articles, hasNextPage) = await _tuoiTreClient.GetArticlesByDateAsync(dateStr, pageNumber);
@@ -89,8 +93,10 @@ public class TuoiTreArticleSpider : ITuoiTreSpider
             }
             finally
             {
-                _semaphore.Release();
+                _semaphoreConcurrentPages.Release();
             }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(_minDelayBetweenPagesInMilliseconds));
         }
 
         await Task.WhenAll(pageProcessingTasks);
@@ -103,6 +109,8 @@ public class TuoiTreArticleSpider : ITuoiTreSpider
             new ParallelOptions { MaxDegreeOfParallelism = _maxConcurrentArticles },
             async (article, ct) =>
             {
+                await Task.Delay(TimeSpan.FromMilliseconds(_minDelayBetweenArticlesInMilliseconds), ct);
+
                 var linkElement = article.QuerySelector("a");
                 var articleUrl = linkElement?.GetAttribute("href");
                 var title = linkElement?.GetAttribute("title");
@@ -167,7 +175,7 @@ public class TuoiTreArticleSpider : ITuoiTreSpider
         catch (Exception e)
         {
             Log.Error(e, "Error processing comments for article {Url}, page {Page}", url, page);
-            return totalCommentLikes; 
+            return totalCommentLikes;
         }
     }
 

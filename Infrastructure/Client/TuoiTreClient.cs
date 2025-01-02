@@ -1,4 +1,5 @@
 using System.Threading.RateLimiting;
+using CSpider.Config;
 
 namespace CSpider.Infrastructure.Client;
 
@@ -33,12 +34,17 @@ public class TuoiTreClient : ITuoiTreClient
     private readonly IBrowsingContext _context;
     private PageRequesterCustom _pageRequester;
 
-    public TuoiTreClient(string baseUrl, string commentApiUrl, IWebContentExtractor contentExtractor)
+    public TuoiTreClient(IWebContentExtractor contentExtractor, TuoiTreConfig config)
     {
-        _baseUrl = baseUrl;
-        _commentApiUrl = commentApiUrl;
+        _baseUrl = config.BaseUrl;
+        _commentApiUrl = config.CommentApiUrl;
         _context = BrowsingContext.New(Configuration.Default.WithDefaultLoader());
-        _pageRequester = new PageRequesterCustom(new CrawlConfiguration(), contentExtractor);
+        _pageRequester = new PageRequesterCustom(new CrawlConfiguration
+        {
+            MaxRetryCount = config.HttpClientConfig.MaxRetry,
+            MinRetryDelayInMilliseconds = config.HttpClientConfig.MinRetryDelayInMilliseconds,
+            HttpRequestTimeoutInSeconds = config.HttpClientConfig.HttpRequestTimeoutInSeconds,
+        }, contentExtractor);
     }
 
 
@@ -47,8 +53,8 @@ public class TuoiTreClient : ITuoiTreClient
         int pageNumber)
     {
         var url = $"{_baseUrl}/timeline-xem-theo-ngay/0/{dateStr}/trang-{pageNumber}.htm";
-        var response = await _pageRequester.MakeRequestAsync(new Uri(url));
 
+        var response = await _pageRequester.MakeRequestAsync(new Uri(url));
         if (!response.HttpResponseMessage.IsSuccessStatusCode)
         {
             Log.Warning(
@@ -66,10 +72,10 @@ public class TuoiTreClient : ITuoiTreClient
         string title)
     {
         var response = await _pageRequester.MakeRequestAsync(new Uri(url));
-
-        if (string.IsNullOrEmpty(response.Content.Text))
+        if (!response.HttpResponseMessage.IsSuccessStatusCode)
         {
-            Log.Error("Empty response from TuoiTre for url {Url}", url);
+            Log.Warning(
+                $"Failed to get article for url {url}. Status code: {response.HttpResponseMessage.StatusCode}");
             return null;
         }
 
@@ -98,11 +104,12 @@ public class TuoiTreClient : ITuoiTreClient
     public async Task<int> GetCommentsAsync(string objectId, string objectType, string url, int page = 1)
     {
         var apiUrl = $"{_commentApiUrl}?pageindex={page}&objId={objectId}&objType={objectType}&sort=2";
-        var response = await _pageRequester.MakeRequestAsync(new Uri(apiUrl));
 
-        if (string.IsNullOrEmpty(response.Content.Text))
+        var response = await _pageRequester.MakeRequestAsync(new Uri(apiUrl));
+        if (!response.HttpResponseMessage.IsSuccessStatusCode)
         {
-            Log.Error("Empty response from TuoiTre API for url {Url}", apiUrl);
+            Log.Warning(
+                $"Failed to get comments for url {url}, page {page}. Status code: {response.HttpResponseMessage.StatusCode}");
             return 0;
         }
 

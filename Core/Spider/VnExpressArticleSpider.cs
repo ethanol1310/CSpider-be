@@ -15,10 +15,12 @@ public class VnExpressArticleSpider : IVnExpressSpider
     private readonly SemaphoreSlim _categorySemaphore;
     private readonly SemaphoreSlim _pageSemaphore;
     private readonly int _maxConcurrentArticles;
+    private readonly int _minDelayBetweenPagesInMilliseconds;
+    private readonly int _minDelayBetweenArticlesInMilliseconds;
     private readonly IVnExpressClient _vnExpressClient;
-    
+
     public ListArticle ListArticle { get; }
-    
+
     public VnExpressArticleSpider(
         IVnExpressClient vnExpressClient,
         IOptions<Config> config)
@@ -28,6 +30,8 @@ public class VnExpressArticleSpider : IVnExpressSpider
         _categorySemaphore = new SemaphoreSlim(cfg.MaxConcurrentCategories);
         _pageSemaphore = new SemaphoreSlim(cfg.MaxConcurrentPages);
         _maxConcurrentArticles = cfg.MaxConcurrentArticles;
+        _minDelayBetweenPagesInMilliseconds = cfg.MinDelayBetweenPagesInMilliseconds;
+        _minDelayBetweenArticlesInMilliseconds = cfg.MinDelayBetweenArticlesInMilliseconds;
         ListArticle = new ListArticle();
     }
 
@@ -37,10 +41,10 @@ public class VnExpressArticleSpider : IVnExpressSpider
         try
         {
             var categories = GetCategories();
-            var categoryTasks = categories.Select(category => 
+            var categoryTasks = categories.Select(category =>
                 ProcessCategoryWithSemaphoreAsync(category, fromDate, toDate));
             await Task.WhenAll(categoryTasks);
-            
+
             stopwatch.Stop();
             Log.Information(
                 "VnExpress crawling completed: Processed {ArticleCount} articles in {ElapsedTime:hh\\:mm\\:ss}",
@@ -91,11 +95,13 @@ public class VnExpressArticleSpider : IVnExpressSpider
 
                 if (articles != null && articles.Length > 0)
                 {
-                    pageProcessingTasks.Add(ProcessArticlesInParallelAsync(articles, category.Id));
+                    pageProcessingTasks.Add(ProcessArticlesInCategoryInParallelAsync(articles, category.Id));
                 }
 
                 if (!hasNextPage) break;
                 pageNumber++;
+
+                await Task.Delay(TimeSpan.FromMilliseconds(_minDelayBetweenPagesInMilliseconds));
             }
             finally
             {
@@ -106,13 +112,15 @@ public class VnExpressArticleSpider : IVnExpressSpider
         await Task.WhenAll(pageProcessingTasks);
     }
 
-    private async Task ProcessArticlesInParallelAsync(IHtmlCollection<IElement> articles, int categoryId)
+    private async Task ProcessArticlesInCategoryInParallelAsync(IHtmlCollection<IElement> articles, int categoryId)
     {
         await Parallel.ForEachAsync(
             articles,
             new ParallelOptions { MaxDegreeOfParallelism = _maxConcurrentArticles },
             async (article, ct) =>
             {
+                await Task.Delay(TimeSpan.FromMilliseconds(_minDelayBetweenArticlesInMilliseconds), ct);
+
                 var linkElement = article.QuerySelector("a");
                 var articleUrl = linkElement?.GetAttribute("href");
                 var title = linkElement?.GetAttribute("title");
@@ -158,7 +166,7 @@ public class VnExpressArticleSpider : IVnExpressSpider
         }
     }
 
-    private async Task<int> ProcessComments(string objectId, string objectType, string title, string url, 
+    private async Task<int> ProcessComments(string objectId, string objectType, string title, string url,
         int offset = 0, int limit = 1000, int totalCommentLikes = 0)
     {
         try
@@ -172,11 +180,11 @@ public class VnExpressArticleSpider : IVnExpressSpider
             }
 
             return totalCommentLikes + currentPageLikes;
-        } 
+        }
         catch (Exception e)
         {
             Log.Error(e, "Error processing comments for article {Url}, page {Page}", url);
-            return totalCommentLikes; 
+            return totalCommentLikes;
         }
     }
 

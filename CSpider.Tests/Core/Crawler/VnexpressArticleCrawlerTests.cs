@@ -12,7 +12,7 @@ using Xunit;
 
 namespace CSpider.Tests.Core.Crawler;
 
-public class VnExpressArticleCrawlerTests: IClassFixture<ArticleStoreFixture>
+public class VnExpressArticleCrawlerTests : IClassFixture<ArticleStoreFixture>
 {
     private readonly Mock<IVnExpressSpider> _mockSpider;
     private readonly ArticleStore _articleStore;
@@ -47,10 +47,10 @@ public class VnExpressArticleCrawlerTests: IClassFixture<ArticleStoreFixture>
         {
             var result = _articleStore.FindByUrl(article.Url);
             Assert.Single(result);
-            Assert.Equal<string>(article.Title, result[0].Title);
+            Assert.Equal(article.Title, result[0].Title);
         }
     }
-    
+
     [Fact]
     public void CrawlArticle_NoArticles()
     {

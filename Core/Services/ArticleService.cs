@@ -10,15 +10,15 @@ using System.Collections.Generic;
 
 public class ArticleService : IArticleService
 {
-    private readonly ArticleStore _articleStorestore;
-    
+    private readonly ArticleStore _articleStore;
+
     public ArticleService(ArticleStore articleStore)
     {
-        _articleStorestore = articleStore;
+        _articleStore = articleStore;
     }
 
-    public List<Article> GetArticles(DateTime fromDate, DateTime toDate)
+    public List<Article> GetArticles(DateTime fromDate, DateTime toDate, Source source)
     {
-        return _articleStorestore.FindByPublishTimeRange(fromDate, toDate);
+        return _articleStore.FindByPublishTimeRangeAndSource(fromDate, toDate, source);
     }
 }
