@@ -20,9 +20,7 @@ Log.Logger = new LoggerConfiguration()
         .MinimumLevel.Debug()
         .Enrich.FromLogContext()
         .WriteTo.Console()
-        .WriteTo.GoogleCloudLogging(
-            projectId: "calif-interview"
-            ).CreateLogger();
+        .CreateLogger();
 
 // Configure settings
 builder.Services.Configure<Config>(
