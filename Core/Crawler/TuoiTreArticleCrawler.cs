@@ -27,7 +27,8 @@ public class TuoiTreArticleCrawler : IArticleCrawler
 
         try
         {
-            var currentDate = toDate;
+            var nextDate = toDate.AddSeconds(1);
+            var currentDate = nextDate;
             while (currentDate > fromDate)
             {
                 var chunkStartDate = currentDate.AddDays(-1) < fromDate ? fromDate : currentDate.AddDays(-1);
@@ -51,7 +52,7 @@ public class TuoiTreArticleCrawler : IArticleCrawler
                 currentDate = chunkStartDate;
             }
 
-            Log.Information("Completed full crawl from {fromDate} to {toDate}", fromDate, toDate);
+            Log.Information("Completed full crawl from {fromDate} to {nextDate}", fromDate, nextDate);
         }
         catch (Exception e)
         {

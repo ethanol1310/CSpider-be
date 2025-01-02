@@ -188,7 +188,7 @@ public class VnExpressArticleSpider : IVnExpressSpider
 
     private void AddArticle(Article article)
     {
-        if (ListArticle.Articles.Count != 0 && ListArticle.Articles.Count % 100 == 0)
+        if (ListArticle.Articles.Count != 0 && ListArticle.Articles.Count % 50 == 0)
         {
             Log.Information("VnExpress: Added {Count} articles", ListArticle.Articles.Count);
         }

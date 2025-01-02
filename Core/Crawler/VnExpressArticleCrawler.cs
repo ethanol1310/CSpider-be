@@ -30,14 +30,14 @@ public class VnExpressArticleCrawler : IArticleCrawler
             var currentDate = toDate;
             while (currentDate > fromDate)
             {
-                var chunkStartDate = currentDate.AddHours(-4) < fromDate ? fromDate : currentDate.AddHours(-4);
+                var chunkStartDate = currentDate.AddHours(-2) < fromDate ? fromDate : currentDate.AddHours(-2);
                 Log.Information("Crawling VnExpress articles from {chunkStartDate} to {currentDate}", chunkStartDate, currentDate);
         
                 _spider.CrawlAsync(chunkStartDate, currentDate).Wait();
                 var now = DateTime.Now;
                 var articles = _spider.ListArticle.Articles.Select(article =>
                 {
-                    article.Source = Source.TuoiTre;
+                    article.Source = Source.VnExpress;
                     article.CreatedTime = now;
                     return article;
                 });

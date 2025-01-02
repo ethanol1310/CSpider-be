@@ -9,6 +9,11 @@ FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
+RUN apt-get update && \
+    apt-get install -y tzdata && \
+    ln -fs /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime && \
+    dpkg-reconfigure -f noninteractive tzdata
+
 RUN mkdir /app/data
 RUN useradd -u 8877 nonroot
 RUN chown -R nonroot:nonroot /app && \
@@ -18,5 +23,7 @@ RUN chown -R nonroot:nonroot /app && \
 
 USER nonroot
 
+ENV TZ="Asia/Ho_Chi_Minh"
+ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "CSpider.dll"]
