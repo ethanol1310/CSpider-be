@@ -107,7 +107,7 @@ flowchart TB
 
 # Tree Folder
 
-```mermaid
+```
 ├── Api
 │   ├── Controllers
 │   │   ├── ArticlesController.cs
