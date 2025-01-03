@@ -97,6 +97,7 @@ flowchart TB
     API --> Store
     Store --> DB
     
+    External --> DB
     Scheduler --> Crawler
     Crawler --> Spider
     Spider --> Clients
