@@ -6,7 +6,6 @@ using Spider;
 public interface IArticleSpider
 {
     public Task CrawlAsync(DateTime fromDate, DateTime toDate);
-    public ListArticle ListArticle { get; }
 }
 
 public interface ITuoiTreSpider : IArticleSpider { }

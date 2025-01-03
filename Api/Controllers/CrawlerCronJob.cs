@@ -30,7 +30,12 @@ public class CrawlerCronJob : IHostedService, IDisposable
 
     private void DoWork(object state)
     {
-        if (!Monitor.TryEnter(_lock)) return;
+        if (!Monitor.TryEnter(_lock))
+        {
+            Log.Information("CronJob: crawling articles is running, cannot acquired lock");
+            return;
+        }
+
         try
         {
             Log.Information("CronJob: crawling articles");

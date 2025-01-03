@@ -15,14 +15,12 @@ namespace CSpider.Tests.Core.Crawler;
 public class VnExpressArticleCrawlerTests : IClassFixture<ArticleStoreFixture>
 {
     private readonly Mock<IVnExpressSpider> _mockSpider;
-    private readonly ArticleStore _articleStore;
     private readonly VnExpressArticleCrawler _crawler;
 
-    public VnExpressArticleCrawlerTests(ArticleStoreFixture fixture)
+    public VnExpressArticleCrawlerTests()
     {
-        _articleStore = fixture.Store;
         _mockSpider = new Mock<IVnExpressSpider>();
-        _crawler = new VnExpressArticleCrawler(_mockSpider.Object, _articleStore);
+        _crawler = new VnExpressArticleCrawler(_mockSpider.Object);
     }
 
     [Fact]
@@ -33,8 +31,6 @@ public class VnExpressArticleCrawlerTests : IClassFixture<ArticleStoreFixture>
         var toDate = DateTime.Now;
         var articles = ArticleSeed.CreateArticlesInDateRange(fromDate, toDate, 5).ToList();
 
-        _mockSpider.Setup(s => s.ListArticle)
-            .Returns(new ListArticle { Articles = articles });
         _mockSpider.Setup(s => s.CrawlAsync(fromDate, toDate))
             .Returns(Task.CompletedTask);
 
@@ -43,12 +39,6 @@ public class VnExpressArticleCrawlerTests : IClassFixture<ArticleStoreFixture>
 
         // Assert
         _mockSpider.Verify(s => s.CrawlAsync(fromDate, toDate), Times.Once);
-        foreach (var article in articles)
-        {
-            var result = _articleStore.FindByUrl(article.Url);
-            Assert.Single(result);
-            Assert.Equal(article.Title, result[0].Title);
-        }
     }
 
     [Fact]
@@ -58,8 +48,6 @@ public class VnExpressArticleCrawlerTests : IClassFixture<ArticleStoreFixture>
         var fromDate = DateTime.Now.AddDays(-1);
         var toDate = DateTime.Now;
 
-        _mockSpider.Setup(s => s.ListArticle)
-            .Returns(new ListArticle());
         _mockSpider.Setup(s => s.CrawlAsync(fromDate, toDate))
             .Returns(Task.CompletedTask);
 

@@ -4,6 +4,7 @@ using CSpider.Core.Spider;
 using CSpider.Infrastructure.Store;
 using CSpider.Interface;
 using CSpider.Models;
+using CSpider.Utils;
 using Serilog;
 
 namespace CSpider.Core.Crawler;
@@ -11,14 +12,11 @@ namespace CSpider.Core.Crawler;
 public class TuoiTreArticleCrawler : IArticleCrawler
 {
     private readonly ITuoiTreSpider _spider;
-    private readonly ArticleStore _articleStore;
 
     public TuoiTreArticleCrawler(
-        ITuoiTreSpider spider,
-        ArticleStore articleStore)
+        ITuoiTreSpider spider)
     {
         _spider = spider;
-        _articleStore = articleStore;
     }
 
     public void CrawlArticle(DateTime fromDate, DateTime toDate)
@@ -27,32 +25,22 @@ public class TuoiTreArticleCrawler : IArticleCrawler
 
         try
         {
-            var nextDate = toDate.AddSeconds(1);
-            var currentDate = nextDate;
+            toDate = Helper.NormalizeDateTime(toDate, true);
+            var currentDate = toDate;
             while (currentDate > fromDate)
             {
                 var chunkStartDate = currentDate.AddDays(-1) < fromDate ? fromDate : currentDate.AddDays(-1);
-                Log.Information("Crawling TuoiTre articles from {chunkStartDate} to {currentDate}", chunkStartDate, currentDate);
+                Log.Information("Crawling TuoiTre articles from {chunkStartDate} to {currentDate}", chunkStartDate.Date, currentDate);
         
                 _spider.CrawlAsync(chunkStartDate, currentDate).Wait();
-                var now = DateTime.Now;
-                var articles = _spider.ListArticle.Articles.Select(article =>
-                {
-                    article.Source = Source.TuoiTre;
-                    article.CreatedTime = now;
-                    return article;
-                });
-
-                _articleStore.UpsertBatch(articles);
-
                 Log.Information(
-                    "Finished chunk: {chunkStartDate} to {currentDate}. Stored {count} articles.",
-                    chunkStartDate, currentDate, _spider.ListArticle.Articles.Count);
+                    "TuoiTre Finished chunk: {chunkStartDate} to {currentDate}.",
+                    chunkStartDate, currentDate);
 
-                currentDate = chunkStartDate;
+                currentDate = chunkStartDate.AddDays(-1);
             }
 
-            Log.Information("Completed full crawl from {fromDate} to {nextDate}", fromDate, nextDate);
+            Log.Information("TuoiTre Completed full crawl from {fromDate} to {nextDate}", fromDate, toDate);
         }
         catch (Exception e)
         {

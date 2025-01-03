@@ -15,14 +15,12 @@ namespace CSpider.Tests.Core.Crawler;
 public class TuoiTreArticleCrawlerTests : IClassFixture<ArticleStoreFixture>
 {
     private readonly Mock<ITuoiTreSpider> _mockSpider;
-    private readonly ArticleStore _articleStore;
     private readonly TuoiTreArticleCrawler _crawler;
 
-    public TuoiTreArticleCrawlerTests(ArticleStoreFixture fixture)
+    public TuoiTreArticleCrawlerTests()
     {
-        _articleStore = fixture.Store;
         _mockSpider = new Mock<ITuoiTreSpider>();
-        _crawler = new TuoiTreArticleCrawler(_mockSpider.Object, _articleStore);
+        _crawler = new TuoiTreArticleCrawler(_mockSpider.Object);
     }
 
     [Fact]
@@ -31,10 +29,7 @@ public class TuoiTreArticleCrawlerTests : IClassFixture<ArticleStoreFixture>
         // Arrange
         var fromDate = DateTime.Now.AddDays(-1);
         var toDate = DateTime.Now;
-        var articles = ArticleSeed.CreateArticlesInDateRange(fromDate, toDate, 5).ToList();
 
-        _mockSpider.Setup(s => s.ListArticle)
-            .Returns(new ListArticle { Articles = articles });
         _mockSpider.Setup(s => s.CrawlAsync(fromDate, toDate))
             .Returns(Task.CompletedTask);
 
@@ -43,12 +38,6 @@ public class TuoiTreArticleCrawlerTests : IClassFixture<ArticleStoreFixture>
 
         // Assert
         _mockSpider.Verify(s => s.CrawlAsync(fromDate, toDate), Times.Once);
-        foreach (var article in articles)
-        {
-            var result = _articleStore.FindByUrl(article.Url);
-            Assert.Single(result);
-            Assert.Equal(article.Title, result[0].Title);
-        }
     }
 
     [Fact]
@@ -58,8 +47,6 @@ public class TuoiTreArticleCrawlerTests : IClassFixture<ArticleStoreFixture>
         var fromDate = DateTime.Now.AddDays(-1);
         var toDate = DateTime.Now;
 
-        _mockSpider.Setup(s => s.ListArticle)
-            .Returns(new ListArticle());
         _mockSpider.Setup(s => s.CrawlAsync(fromDate, toDate))
             .Returns(Task.CompletedTask);
 

@@ -8,7 +8,7 @@ public enum Source
 
 public class Article
 {
-    public int Id { get; set; }
+    public string Id { get; set; }
     public Source Source { get; set; }
     public required string Title { get; set; }
     public required string Url { get; set; }

@@ -11,14 +11,11 @@ namespace CSpider.Core.Crawler;
 public class VnExpressArticleCrawler : IArticleCrawler
 {
     private readonly IVnExpressSpider _spider;
-    private readonly ArticleStore _articleStore;
 
     public VnExpressArticleCrawler(
-        IVnExpressSpider spider,
-        ArticleStore articleStore)
+        IVnExpressSpider spider)
     {
         _spider = spider;
-        _articleStore = articleStore;
     }
 
     public void CrawlArticle(DateTime fromDate, DateTime toDate)
@@ -30,28 +27,18 @@ public class VnExpressArticleCrawler : IArticleCrawler
             var currentDate = toDate;
             while (currentDate > fromDate)
             {
-                var chunkStartDate = currentDate.AddHours(-2) < fromDate ? fromDate : currentDate.AddHours(-2);
+                var chunkStartDate = currentDate.AddHours(-12) < fromDate ? fromDate : currentDate.AddHours(-12);
                 Log.Information("Crawling VnExpress articles from {chunkStartDate} to {currentDate}", chunkStartDate, currentDate);
         
                 _spider.CrawlAsync(chunkStartDate, currentDate).Wait();
-                var now = DateTime.Now;
-                var articles = _spider.ListArticle.Articles.Select(article =>
-                {
-                    article.Source = Source.VnExpress;
-                    article.CreatedTime = now;
-                    return article;
-                });
-
-                _articleStore.UpsertBatch(articles);
-
                 Log.Information(
-                    "Finished chunk: {chunkStartDate} to {currentDate}. Stored {count} articles.",
-                    chunkStartDate, currentDate, _spider.ListArticle.Articles.Count);
+                    "VnExpress Finished chunk: {chunkStartDate} to {currentDate}.",
+                    chunkStartDate, currentDate);
 
                 currentDate = chunkStartDate;
             }
 
-            Log.Information("Completed full crawl from {fromDate} to {toDate}", fromDate, toDate);
+            Log.Information("VnExpress Completed full crawl from {fromDate} to {toDate}", fromDate, toDate);
         }
         catch (Exception e)
         {

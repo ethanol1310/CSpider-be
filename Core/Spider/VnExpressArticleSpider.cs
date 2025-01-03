@@ -1,3 +1,7 @@
+using System;
+using CSpider.Infrastructure.Store;
+using CSpider.Interface;
+
 namespace CSpider.Core.Spider;
 using Models;
 using Serilog;
@@ -16,10 +20,11 @@ public class VnExpressArticleSpider : IVnExpressSpider
     private readonly int _minDelayBetweenPagesInMilliseconds;
     private readonly int _minDelayBetweenArticlesInMilliseconds;
     private readonly IVnExpressClient _vnExpressClient;
+    private readonly ArticleStore _articleStore;
 
-    public ListArticle ListArticle { get; }
 
     public VnExpressArticleSpider(
+        ArticleStore articleStore,
         IVnExpressClient vnExpressClient,
         IOptions<Config> config)
     {
@@ -30,7 +35,7 @@ public class VnExpressArticleSpider : IVnExpressSpider
         _maxConcurrentArticles = cfg.MaxConcurrentArticles;
         _minDelayBetweenPagesInMilliseconds = cfg.MinDelayBetweenPagesInMilliseconds;
         _minDelayBetweenArticlesInMilliseconds = cfg.MinDelayBetweenArticlesInMilliseconds;
-        ListArticle = new ListArticle();
+        _articleStore = articleStore;
     }
 
     public async Task CrawlAsync(DateTime fromDate, DateTime toDate)
@@ -45,8 +50,9 @@ public class VnExpressArticleSpider : IVnExpressSpider
 
             stopwatch.Stop();
             Log.Information(
-                "VnExpress crawling completed: Processed {ArticleCount} articles in {ElapsedTime:hh\\:mm\\:ss}",
-                ListArticle.Articles.Count,
+                "VnExpress crawling {fromDate} - {toDate}: completed in {ElapsedTime:hh\\:mm\\:ss}",
+                fromDate,
+                toDate,
                 stopwatch.Elapsed);
         }
         catch (Exception ex)
@@ -152,6 +158,7 @@ public class VnExpressArticleSpider : IVnExpressSpider
             var totalLikes = await ProcessComments(objectId, objectType, title, url);
             AddArticle(new Article
             {
+                Id = objectId,
                 Title = title,
                 Url = url,
                 TotalCommentLikes = totalLikes,
@@ -188,12 +195,17 @@ public class VnExpressArticleSpider : IVnExpressSpider
 
     private void AddArticle(Article article)
     {
-        if (ListArticle.Articles.Count != 0 && ListArticle.Articles.Count % 50 == 0)
+        try 
         {
-            Log.Information("VnExpress: Added {Count} articles", ListArticle.Articles.Count);
+            article.Source = Source.VnExpress;
+            article.CreatedTime = DateTime.Now;
+            _articleStore.Upsert(article);
+            Log.Debug($"Added article: {article.TotalCommentLikes} - {article.Title} - {article.Url}");
         }
-        Log.Debug($"Added article: {article.TotalCommentLikes} - {article.Title} - {article.Url}");
-        ListArticle.AddArticle(article);
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error adding article to database: {Title} - {Url}", article.Title, article.Url);
+        }
     }
 
     private List<VnExpressCategory> GetCategories()

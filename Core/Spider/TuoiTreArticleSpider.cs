@@ -1,5 +1,7 @@
 using System;
+using CSpider.Infrastructure.Store;
 using CSpider.Interface;
+using LiteDB;
 
 namespace CSpider.Core.Spider;
 
@@ -27,10 +29,11 @@ public class TuoiTreArticleSpider : ITuoiTreSpider
     private readonly int _minDelayBetweenPagesInMilliseconds;
     private readonly int _minDelayBetweenArticlesInMilliseconds;
     private readonly ITuoiTreClient _tuoiTreClient;
+    private readonly ArticleStore _articleStore;
 
-    public ListArticle ListArticle { get; }
 
     public TuoiTreArticleSpider(
+        ArticleStore articleStore,
         ITuoiTreClient tuoiTreClient,
         IOptions<Config> config)
     {
@@ -41,7 +44,7 @@ public class TuoiTreArticleSpider : ITuoiTreSpider
         _maxConcurrentArticles = cfg.MaxConcurrentArticles;
         _minDelayBetweenPagesInMilliseconds = cfg.MinDelayBetweenPagesInMilliseconds;
         _minDelayBetweenArticlesInMilliseconds = cfg.MinDelayBetweenArticlesInMilliseconds;
-        ListArticle = new ListArticle();
+        _articleStore = articleStore;
     }
 
 
@@ -67,8 +70,9 @@ public class TuoiTreArticleSpider : ITuoiTreSpider
 
         stopwatch.Stop();
         Log.Information(
-            "TuoiTre crawling completed: Processed {ArticleCount} articles in {ElapsedTime:hh\\:mm\\:ss}",
-            ListArticle.Articles.Count,
+            "TuoiTre crawling {fromDate} - {toDate}: completed in {ElapsedTime:hh\\:mm\\:ss}",
+            fromDate,
+            toDate,
             stopwatch.Elapsed);
     }
 
@@ -146,6 +150,7 @@ public class TuoiTreArticleSpider : ITuoiTreSpider
             var totalLikes = await ProcessComments(objectId, objectType, url, title);
             AddArticle(new Article
             {
+                Id = objectId,
                 Title = title,
                 Url = url,
                 TotalCommentLikes = totalLikes,
@@ -182,11 +187,16 @@ public class TuoiTreArticleSpider : ITuoiTreSpider
 
     private void AddArticle(Article article)
     {
-        if (ListArticle.Articles.Count != 0 && ListArticle.Articles.Count % 50 == 0)
+        try 
         {
-            Log.Information("TuoiTre: Added {Count} articles", ListArticle.Articles.Count);
+            article.Source = Source.TuoiTre;
+            article.CreatedTime = DateTime.Now;
+            _articleStore.Upsert(article);
+            Log.Debug($"Added article: {article.TotalCommentLikes} - {article.Title} - {article.Url}");
         }
-        Log.Debug($"Added article: {article.TotalCommentLikes} - {article.Title} - {article.Url}");
-        ListArticle.AddArticle(article);
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error adding article to database: {Title} - {Url}", article.Title, article.Url);
+        }
     }
 }

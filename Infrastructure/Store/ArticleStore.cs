@@ -20,16 +20,7 @@ public class ArticleStore
 
     public void Upsert(Article article)
     {
-        var existing = _articles.FindOne(x => x.Url == article.Url && x.Source == article.Source);
-        if (existing != null)
-        {
-            article.Id = existing.Id;
-            _articles.Update(article);
-        }
-        else
-        {
-            _articles.Insert(article);
-        }
+        _articles.Upsert(article);
     }
 
     public void UpsertBatch(IEnumerable<Article> articles)
