@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using CSpider.Core.Interface;
 using CSpider.Core.Spider;
 using CSpider.Infrastructure.Store;
@@ -23,6 +24,7 @@ public class TuoiTreArticleCrawler : IArticleCrawler
     {
         Log.Information("Start Crawling TuoiTre articles from {fromDate} to {toDate}", fromDate, toDate);
 
+        var stopWatch = Stopwatch.StartNew();
         try
         {
             toDate = Helper.NormalizeDateTime(toDate, true);
@@ -33,14 +35,11 @@ public class TuoiTreArticleCrawler : IArticleCrawler
                 Log.Information("Crawling TuoiTre articles from {chunkStartDate} to {currentDate}", chunkStartDate.Date, currentDate);
         
                 _spider.CrawlAsync(chunkStartDate, currentDate).Wait();
-                Log.Information(
-                    "TuoiTre Finished chunk: {chunkStartDate} to {currentDate}.",
-                    chunkStartDate, currentDate);
 
                 currentDate = chunkStartDate.AddDays(-1);
             }
 
-            Log.Information("TuoiTre Completed full crawl from {fromDate} to {nextDate}", fromDate, toDate);
+            Log.Information("Completed full crawl TuoiTre from {fromDate} to {nextDate} in {ElapsedTime:hh\\:mm\\:ss}", fromDate, toDate, stopWatch.Elapsed);
         }
         catch (Exception e)
         {

@@ -4,6 +4,7 @@ using CSpider.Interface;
 using CSpider.Core.Spider;
 using CSpider.Infrastructure.Store;
 using CSpider.Models;
+using System.Diagnostics;
 using Serilog;
 
 namespace CSpider.Core.Crawler;
@@ -21,7 +22,8 @@ public class VnExpressArticleCrawler : IArticleCrawler
     public void CrawlArticle(DateTime fromDate, DateTime toDate)
     {
         Log.Information("Start Crawling VnExpress articles from {fromDate} to {toDate}", fromDate, toDate);
-
+        
+        var stopWatch = Stopwatch.StartNew();
         try
         {
             var currentDate = toDate;
@@ -31,14 +33,11 @@ public class VnExpressArticleCrawler : IArticleCrawler
                 Log.Information("Crawling VnExpress articles from {chunkStartDate} to {currentDate}", chunkStartDate, currentDate);
         
                 _spider.CrawlAsync(chunkStartDate, currentDate).Wait();
-                Log.Information(
-                    "VnExpress Finished chunk: {chunkStartDate} to {currentDate}.",
-                    chunkStartDate, currentDate);
 
                 currentDate = chunkStartDate;
             }
 
-            Log.Information("VnExpress Completed full crawl from {fromDate} to {toDate}", fromDate, toDate);
+            Log.Information("Completed full crawl VnExpress from {fromDate} to {toDate} in {ElapsedTime:hh\\:mm\\:ss}", fromDate, toDate, stopWatch.Elapsed);
         }
         catch (Exception e)
         {
