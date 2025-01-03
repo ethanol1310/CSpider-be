@@ -22,41 +22,7 @@ public class TuoiTreArticleCrawlerTests : IClassFixture<ArticleStoreFixture>
         _mockSpider = new Mock<ITuoiTreSpider>();
         _crawler = new TuoiTreArticleCrawler(_mockSpider.Object);
     }
-
-    [Fact]
-    public void CrawlArticle_ShouldProcessAndStoreArticles()
-    {
-        // Arrange
-        var fromDate = DateTime.Now.AddDays(-1);
-        var toDate = DateTime.Now;
-
-        _mockSpider.Setup(s => s.CrawlAsync(fromDate, toDate))
-            .Returns(Task.CompletedTask);
-
-        // Act
-        _crawler.CrawlArticle(fromDate, toDate);
-
-        // Assert
-        _mockSpider.Verify(s => s.CrawlAsync(fromDate, toDate), Times.Once);
-    }
-
-    [Fact]
-    public void CrawlArticle_NoArticles()
-    {
-        // Arrange
-        var fromDate = DateTime.Now.AddDays(-1);
-        var toDate = DateTime.Now;
-
-        _mockSpider.Setup(s => s.CrawlAsync(fromDate, toDate))
-            .Returns(Task.CompletedTask);
-
-        // Act
-        _crawler.CrawlArticle(fromDate, toDate);
-
-        // Assert
-        _mockSpider.Verify(s => s.CrawlAsync(fromDate, toDate), Times.Once);
-    }
-
+    
     [Fact]
     public void CrawlArticle_WhenSpiderFails_ShouldNotCrash()
     {

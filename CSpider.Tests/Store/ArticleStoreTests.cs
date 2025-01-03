@@ -54,6 +54,7 @@ public class ArticleStoreTests : IClassFixture<ArticleStoreFixture>
         );
 
         // Act
+        updatedArticle.Id = originalArticle.Id;
         _fixture.Store.UpsertBatch(new[] { originalArticle });
         _fixture.Store.UpsertBatch(new[] { updatedArticle });
 

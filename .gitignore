@@ -29,6 +29,7 @@
 _UpgradeReport_Files/
 [Pp]ackages/
 
+.idea/*
 Thumbs.db
 Desktop.ini
 .DS_Store

@@ -16,6 +16,7 @@ public static class ArticleSeed
     {
         return new Article
         {
+            Id = Guid.NewGuid().ToString(),
             Source = source,
             Title = title ?? $"Test Article {Guid.NewGuid()}",
             Url = url ?? $"http://test.com/{Guid.NewGuid()}",
